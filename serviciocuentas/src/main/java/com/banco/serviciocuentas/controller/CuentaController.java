@@ -71,4 +71,8 @@ public class CuentaController {
         }
         return "Cuenta no encontrada";
     }
+    @GetMapping("/clientes")
+    public List<Cliente> obtenerTodosLosClientes() {
+        return clienteRepo.findAll();
+    }
 }
