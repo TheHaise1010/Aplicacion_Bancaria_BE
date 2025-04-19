@@ -1,6 +1,7 @@
 package com.banco.serviciocuentas.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 
 @Entity
@@ -19,7 +20,10 @@ public class Cuenta {
     @JoinColumn(name = "cliente_id")
     private Cliente cliente;
 
-    // Getters y Setters
+    public Cuenta() { }
+
+    // Getters y setters existentes...
+
     public Long getId() {
         return id;
     }
@@ -43,5 +47,10 @@ public class Cuenta {
     }
     public void setCliente(Cliente cliente) {
         this.cliente = cliente;
+    }
+
+    @JsonProperty("duiCliente")
+    public String getDuiCliente() {
+        return cliente != null ? cliente.getDui() : null;
     }
 }
