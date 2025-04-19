@@ -3,10 +3,11 @@ package com.banco.serviciocuentas.repository;
 import com.banco.serviciocuentas.model.Credenciales;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
+import java.util.Optional;
 
 public interface CredencialesRepository extends JpaRepository<Credenciales, Long> {
-    /**
-     * Obtiene todas las credenciales asociadas a un cliente por su DUI.
-     */
     List<Credenciales> findByClienteDui(String clienteDui);
+
+    // <— Agrega esto:
+    Optional<Credenciales> findByCorreoAndContrasena(String correo, String contrasena);
 }

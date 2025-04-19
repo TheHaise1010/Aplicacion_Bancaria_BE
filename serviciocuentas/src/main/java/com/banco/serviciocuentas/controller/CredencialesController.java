@@ -4,7 +4,8 @@ import com.banco.serviciocuentas.model.Credenciales;
 import com.banco.serviciocuentas.repository.CredencialesRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import java.util.Optional;
+import org.springframework.http.HttpStatus;
 import java.net.URI;
 import java.util.List;
 
@@ -40,6 +41,8 @@ public class CredencialesController {
                 .body(saved);
     }
 
+
+
     // Actualizar credenciales por DUI (body con nuevo correo y/o contraseña)
     // PUT /api/credenciales/{dui}
     @PutMapping("/{dui}")
@@ -68,4 +71,28 @@ public class CredencialesController {
         credRepo.deleteAll(creds);
         return ResponseEntity.noContent().build();
     }
+
+    // DTO simple para login
+    public static class LoginRequest {
+        private String correo;
+        private String contrasena;
+        public String getCorreo() { return correo; }
+        public void setCorreo(String correo) { this.correo = correo; }
+        public String getContrasena() { return contrasena; }
+        public void setContrasena(String contrasena) { this.contrasena = contrasena; }
+    }
+
+    // POST /api/credenciales/login
+    @PostMapping("/login")
+    public ResponseEntity<Credenciales> login(@RequestBody LoginRequest req) {
+        Optional<Credenciales> opt = credRepo.findByCorreoAndContrasena(
+                req.getCorreo(), req.getContrasena()
+        );
+        if (opt.isPresent()) {
+            return ResponseEntity.ok(opt.get());
+        } else {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+    }
+
 }
