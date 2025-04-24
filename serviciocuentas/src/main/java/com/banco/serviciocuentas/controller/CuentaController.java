@@ -9,8 +9,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
-import java.util.Collections;
+import java.util.HashMap; // Importar HashMap
 import java.util.List;
+import java.util.Map;     // Importar Map
 import java.util.Optional;
 
 @RestController
@@ -19,39 +20,55 @@ import java.util.Optional;
 public class CuentaController {
 
     private final ClienteRepository clienteRepo;
-    private final CuentaRepository  cuentaRepo;
+    private final CuentaRepository cuentaRepo;
 
     public CuentaController(ClienteRepository clienteRepo,
                             CuentaRepository cuentaRepo) {
         this.clienteRepo = clienteRepo;
-        this.cuentaRepo  = cuentaRepo;
+        this.cuentaRepo = cuentaRepo;
     }
 
     // Listar todas las cuentas
+    // Este método ya devuelve una lista, lo cual es estándar.
+    // Una lista vacía es el caso de "no encontradas".
     @GetMapping
     public List<Cuenta> findAll() {
         return cuentaRepo.findAll();
     }
 
     // Listar cuentas de un cliente por DUI
+    // GET /api/cuentas/cliente/{dui}
     @GetMapping("/cliente/{dui}")
-    public ResponseEntity<List<Cuenta>> findByClienteDui(@PathVariable String dui) {
+    public ResponseEntity<?> findByClienteDui(@PathVariable String dui) {
         Optional<Cliente> optCliente = clienteRepo.findByDui(dui);
         if (optCliente.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Cliente con DUI " + dui + " no encontrado");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
-        return ResponseEntity.ok(optCliente.get().getCuentas());
+
+        List<Cuenta> cuentas = optCliente.get().getCuentas();
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Cuentas encontradas para cliente con DUI " + dui);
+        response.put("data", cuentas); // Incluimos la lista de cuentas en 'data'
+        return ResponseEntity.ok(response);
     }
 
     // Crear cuenta para un cliente (recibe JSON con número y saldo)
+    // POST /api/cuentas/cliente/{dui}
     @PostMapping("/cliente/{dui}")
-    public ResponseEntity<Cuenta> create(
+    public ResponseEntity<?> create(
             @PathVariable String dui,
             @RequestBody Cuenta cuentaData
     ) {
         Optional<Cliente> optCliente = clienteRepo.findByDui(dui);
         if (optCliente.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Cliente con DUI " + dui + " no encontrado");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
         Cliente cliente = optCliente.get();
 
@@ -61,20 +78,31 @@ public class CuentaController {
         nueva.setCliente(cliente);
 
         Cuenta saved = cuentaRepo.save(nueva);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Cuenta creada exitosamente");
+        response.put("data", saved); // Incluimos la cuenta creada en 'data'
+
+        // Usamos 201 Created, que es estándar para creaciones exitosas
         return ResponseEntity
                 .created(URI.create("/api/cuentas/" + saved.getNumero()))
-                .body(saved);
+                .body(response);
     }
 
     // Borrar cuenta por DUI y número
+    // DELETE /api/cuentas/cliente/{dui}/{numero}
     @DeleteMapping("/cliente/{dui}/{numero}")
-    public ResponseEntity<Void> delete(
-            @PathVariable String dui,
-            @PathVariable String numero
+    public ResponseEntity<?> delete( // Cambiamos a <?> para poder devolver un cuerpo en caso de error
+                                     @PathVariable String dui,
+                                     @PathVariable String numero
     ) {
         Optional<Cliente> optCliente = clienteRepo.findByDui(dui);
         if (optCliente.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Cliente con DUI " + dui + " no encontrado");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
         Cliente cliente = optCliente.get();
 
@@ -82,23 +110,33 @@ public class CuentaController {
                 .filter(c -> c.getNumero().equals(numero))
                 .findFirst();
         if (optCuenta.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Cuenta con número " + numero + " no encontrada para el cliente con DUI " + dui);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
 
         cuentaRepo.delete(optCuenta.get());
+
+        // Para una eliminación exitosa, 204 No Content es el código estándar y no lleva cuerpo.
+        // Si quisieras devolver un mensaje de éxito, podrías usar 200 OK con un cuerpo,
+        // pero 204 es más RESTful paraDELETE. Mantendremos 204 para la eliminación exitosa.
         return ResponseEntity.noContent().build();
     }
 
     // Abonar efectivo (recibe JSON con número de cuenta y monto)
+    // POST /api/cuentas/cliente/{dui}/abonarefectivo
     @PostMapping("/cliente/{dui}/abonarefectivo")
-    public ResponseEntity<String> abonar(
-            @PathVariable String dui,
-            @RequestBody CuentaAbonoRequest req
+    public ResponseEntity<?> abonar( // Cambiamos a <?>
+                                     @PathVariable String dui,
+                                     @RequestBody CuentaAbonoRequest req
     ) {
         Optional<Cliente> optCliente = clienteRepo.findByDui(dui);
         if (optCliente.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Cliente no encontrado");
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Cliente con DUI " + dui + " no encontrado");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
         Cliente cliente = optCliente.get();
 
@@ -106,26 +144,38 @@ public class CuentaController {
                 .filter(c -> c.getNumero().equals(req.getNumero()))
                 .findFirst();
         if (optCuenta.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Cuenta no encontrada");
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Cuenta con número " + req.getNumero() + " no encontrada para el cliente con DUI " + dui);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
 
         Cuenta cuenta = optCuenta.get();
         cuenta.setSaldo(cuenta.getSaldo() + req.getMonto());
-        cuentaRepo.save(cuenta);
-        return ResponseEntity.ok("Abono exitoso. Nuevo saldo: " + cuenta.getSaldo());
+        Cuenta updatedCuenta = cuentaRepo.save(cuenta); // Guardamos y obtenemos la cuenta actualizada
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Abono exitoso.");
+        response.put("newSaldo", updatedCuenta.getSaldo()); // Opcional: devolver el nuevo saldo
+        response.put("data", updatedCuenta); // Opcional: devolver la cuenta actualizada
+
+        return ResponseEntity.ok(response);
     }
 
     // Retirar efectivo (recibe JSON con número de cuenta y monto)
+    // POST /api/cuentas/cliente/{dui}/retirarefectivo
     @PostMapping("/cliente/{dui}/retirarefectivo")
-    public ResponseEntity<String> retirar(
-            @PathVariable String dui,
-            @RequestBody CuentaAbonoRequest req
+    public ResponseEntity<?> retirar( // Cambiamos a <?>
+                                      @PathVariable String dui,
+                                      @RequestBody CuentaAbonoRequest req
     ) {
         Optional<Cliente> optCliente = clienteRepo.findByDui(dui);
         if (optCliente.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Cliente no encontrado");
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Cliente con DUI " + dui + " no encontrado");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
         Cliente cliente = optCliente.get();
 
@@ -133,28 +183,52 @@ public class CuentaController {
                 .filter(c -> c.getNumero().equals(req.getNumero()))
                 .findFirst();
         if (optCuenta.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Cuenta no encontrada");
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Cuenta con número " + req.getNumero() + " no encontrada para el cliente con DUI " + dui);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
 
         Cuenta cuenta = optCuenta.get();
         if (cuenta.getSaldo() < req.getMonto()) {
-            return ResponseEntity.badRequest()
-                    .body("Saldo insuficiente");
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Saldo insuficiente. Saldo actual: " + cuenta.getSaldo());
+            // Usamos 400 Bad Request para errores de lógica de negocio (saldo insuficiente)
+            return ResponseEntity.badRequest().body(response);
         }
+
         cuenta.setSaldo(cuenta.getSaldo() - req.getMonto());
-        cuentaRepo.save(cuenta);
-        return ResponseEntity.ok("Retiro exitoso. Nuevo saldo: " + cuenta.getSaldo());
+        Cuenta updatedCuenta = cuentaRepo.save(cuenta); // Guardamos y obtenemos la cuenta actualizada
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Retiro exitoso.");
+        response.put("newSaldo", updatedCuenta.getSaldo()); // Opcional: devolver el nuevo saldo
+        response.put("data", updatedCuenta); // Opcional: devolver la cuenta actualizada
+
+        return ResponseEntity.ok(response);
     }
 
-    // DTO para abono/retiro
+    // DTO para abono/retiro (sin cambios)
     public static class CuentaAbonoRequest {
         private String numero;
         private double monto;
 
-        public String getNumero() { return numero; }
-        public void setNumero(String numero) { this.numero = numero; }
-        public double getMonto() { return monto; }
-        public void setMonto(double monto) { this.monto = monto; }
+        public String getNumero() {
+            return numero;
+        }
+
+        public void setNumero(String numero) {
+            this.numero = numero;
+        }
+
+        public double getMonto() {
+            return monto;
+        }
+
+        public void setMonto(double monto) {
+            this.monto = monto;
+        }
     }
 }
