@@ -134,16 +134,30 @@ public class CredencialesController {
                 req.getCorreo(), req.getContrasena()
         );
         if (opt.isPresent()) {
+            Credenciales credenciales = opt.get(); // Obtenemos el objeto Credenciales
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("token", "un_token_seguro_generado"); // Para generar un token real mas adelante
             response.put("message", "Login exitoso");
-            return ResponseEntity.ok(response);
+            // *** USANDO getTipoCuenta() de tu modelo ***
+            response.put("tipoUsuario", credenciales.getTipoCuenta());
+            // *******************************************
+            // Opcionalmente, si necesitas el DUI del cliente asociado:
+            if (credenciales.getClienteDui() != null) {
+                response.put("clienteDui", credenciales.getClienteDui());
+            }
+            // *******************************************
+
+            return ResponseEntity.ok(response); // Devuelve 200 OK con el cuerpo de respuesta
         } else {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
             response.put("message", "Credenciales inválidas");
-            return ResponseEntity.ok(response);        }
+            // Mantenemos tu comportamiento original de 200 OK para fallo,
+            // pero reitero la sugerencia de usar 401 Unauthorized:
+            // return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            return ResponseEntity.ok(response);
+        }
     }
 
 }
