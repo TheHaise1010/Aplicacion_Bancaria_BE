@@ -11,6 +11,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/clientes")
+@CrossOrigin(origins = "http://localhost:4200") // Permite peticiones desde tu aplicación Angular
 public class ClienteController {
 
     private final ClienteRepository clienteRepo;

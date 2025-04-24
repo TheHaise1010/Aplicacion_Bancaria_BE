@@ -8,9 +8,12 @@ import java.util.Optional;
 import org.springframework.http.HttpStatus;
 import java.net.URI;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/credenciales")
+@CrossOrigin(origins = "http://localhost:4200") // Permite peticiones desde tu aplicación Angular
 public class CredencialesController {
 
     private final CredencialesRepository credRepo;
@@ -40,8 +43,6 @@ public class CredencialesController {
                 .created(URI.create("/api/credenciales/" + saved.getId()))
                 .body(saved);
     }
-
-
 
     // Actualizar credenciales por DUI (body con nuevo correo y/o contraseña)
     // PUT /api/credenciales/{dui}
@@ -84,15 +85,21 @@ public class CredencialesController {
 
     // POST /api/credenciales/login
     @PostMapping("/login")
-    public ResponseEntity<Credenciales> login(@RequestBody LoginRequest req) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest req) {
         Optional<Credenciales> opt = credRepo.findByCorreoAndContrasena(
                 req.getCorreo(), req.getContrasena()
         );
         if (opt.isPresent()) {
-            return ResponseEntity.ok(opt.get());
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("token", "un_token_seguro_generado"); // Para generar un token real mas adelante
+            response.put("message", "Login exitoso");
+            return ResponseEntity.ok(response);
         } else {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Credenciales inválidas");
+            return ResponseEntity.ok(response);        }
     }
 
 }
