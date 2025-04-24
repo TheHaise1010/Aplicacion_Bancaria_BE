@@ -37,40 +37,84 @@ public class CredencialesController {
     // Crear credenciales (body con datos)
     // POST /api/credenciales
     @PostMapping
-    public ResponseEntity<Credenciales> create(@RequestBody Credenciales cred) {
-        Credenciales saved = credRepo.save(cred);
-        return ResponseEntity
-                .created(URI.create("/api/credenciales/" + saved.getId()))
-                .body(saved);
+    public ResponseEntity<?> create(@RequestBody Credenciales cred) {
+        List<Credenciales> existingCreds = credRepo.findByClienteDui(cred.getClienteDui());
+        if (!existingCreds.isEmpty()) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Ya existe una credencial registrada para el DUI: " + cred.getClienteDui());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(response); // 409 Conflict
+        }
+        try {
+            Credenciales saved = credRepo.save(cred);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("id", saved.getId());
+            response.put("message", "Credenciales creadas exitosamente");
+            return ResponseEntity.created(URI.create("/api/credenciales/" + saved.getId())).body(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Error al crear las credenciales: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
     }
+
 
     // Actualizar credenciales por DUI (body con nuevo correo y/o contraseña)
     // PUT /api/credenciales/{dui}
     @PutMapping("/{dui}")
-    public ResponseEntity<Credenciales> update(
+    public ResponseEntity<?> update(
             @PathVariable String dui,
             @RequestBody Credenciales updated
     ) {
         List<Credenciales> creds = credRepo.findByClienteDui(dui);
         if (creds.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "No se encontraron credenciales con el DUI: " + dui);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
-        Credenciales c = creds.get(0);
-        c.setCorreo(updated.getCorreo());
-        c.setContrasena(updated.getContrasena());
-        return ResponseEntity.ok(credRepo.save(c));
+        try {
+            Credenciales c = creds.get(0);
+            c.setCorreo(updated.getCorreo());
+            c.setContrasena(updated.getContrasena());
+            Credenciales saved = credRepo.save(c);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Credenciales actualizadas exitosamente");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Error al actualizar las credenciales: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
     }
 
     // Borrar credenciales por DUI
     // DELETE /api/credenciales/{dui}
     @DeleteMapping("/{dui}")
-    public ResponseEntity<Void> delete(@PathVariable String dui) {
+    public ResponseEntity<?> delete(@PathVariable String dui) {
         List<Credenciales> creds = credRepo.findByClienteDui(dui);
         if (creds.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "No se encontraron credenciales con el DUI: " + dui);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
-        credRepo.deleteAll(creds);
-        return ResponseEntity.noContent().build();
+        try {
+            credRepo.deleteAll(creds);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Credenciales eliminadas exitosamente");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Error al eliminar las credenciales: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
     }
 
     // DTO simple para login
