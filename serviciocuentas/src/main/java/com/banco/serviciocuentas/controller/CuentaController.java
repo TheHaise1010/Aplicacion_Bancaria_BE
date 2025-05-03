@@ -93,36 +93,26 @@ public class CuentaController {
     // Borrar cuenta por DUI y número
     // DELETE /api/cuentas/cliente/{dui}/{numero}
     @DeleteMapping("/cliente/{dui}/{numero}")
-    public ResponseEntity<?> delete( // Cambiamos a <?> para poder devolver un cuerpo en caso de error
-                                     @PathVariable String dui,
-                                     @PathVariable String numero
+    public ResponseEntity<Map<String, Object>> delete(
+            @PathVariable String dui,
+            @PathVariable String numero
     ) {
-        Optional<Cliente> optCliente = clienteRepo.findByDui(dui);
-        if (optCliente.isEmpty()) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "Cliente con DUI " + dui + " no encontrado");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-        }
-        Cliente cliente = optCliente.get();
+        Optional<Cuenta> opt = cuentaRepo.findByClienteDuiAndNumero(dui, numero);
+        Map<String, Object> response = new HashMap<>();
 
-        Optional<Cuenta> optCuenta = cliente.getCuentas().stream()
-                .filter(c -> c.getNumero().equals(numero))
-                .findFirst();
-        if (optCuenta.isEmpty()) {
-            Map<String, Object> response = new HashMap<>();
+        if (opt.isEmpty()) {
             response.put("success", false);
-            response.put("message", "Cuenta con número " + numero + " no encontrada para el cliente con DUI " + dui);
+            response.put("message", String.format(
+                    "No se encontró la cuenta %s para el cliente %s", numero, dui));
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
 
-        cuentaRepo.delete(optCuenta.get());
-
-        // Para una eliminación exitosa, 204 No Content es el código estándar y no lleva cuerpo.
-        // Si quisieras devolver un mensaje de éxito, podrías usar 200 OK con un cuerpo,
-        // pero 204 es más RESTful paraDELETE. Mantendremos 204 para la eliminación exitosa.
-        return ResponseEntity.noContent().build();
+        cuentaRepo.delete(opt.get());
+        response.put("success", true);
+        response.put("message", "Cuenta eliminada correctamente");
+        return ResponseEntity.ok(response);
     }
+
 
     // Abonar efectivo (recibe JSON con número de cuenta y monto)
     // POST /api/cuentas/cliente/{dui}/abonarefectivo

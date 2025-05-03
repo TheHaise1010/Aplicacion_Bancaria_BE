@@ -8,6 +8,5 @@ import java.util.Optional;
 public interface CredencialesRepository extends JpaRepository<Credenciales, Long> {
     List<Credenciales> findByClienteDui(String clienteDui);
 
-    // <— Agrega esto:
     Optional<Credenciales> findByCorreoAndContrasena(String correo, String contrasena);
 }
